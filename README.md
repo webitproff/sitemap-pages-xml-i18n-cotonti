@@ -7,6 +7,15 @@ The **Sitemap Pages** plugin generates individual XML sitemap files for each lan
 
 
 
+**[DEMO](https://abuyfile.com/index.php?r=sitemap_pages&a=index)** 
+
+**Repository:** [https://github.com/webitproff/sitemap-pages-xml-i18n-cotonti](https://github.com/webitproff/sitemap-pages-xml-i18n-cotonti)
+
+[![Version](https://img.shields.io/badge/version-1.0.1-green.svg)](https://github.com/webitproff/sitemap-pages-xml-i18n-cotonti/releases)
+[![Cotonti Compatibility](https://img.shields.io/badge/Cotonti-1.0-orange.svg)](https://github.com/Cotonti/Cotonti)
+[![PHP](https://img.shields.io/badge/PHP-8.5-purple.svg)](https://www.php.net/releases/8_5_0.php)
+[![MySQL](https://img.shields.io/badge/MySQL-8.4-blue.svg)](https://www.mysql.com/)
+[![License](https://img.shields.io/badge/license-BSD-blue.svg)](https://github.com/webitproff/sitemap-pages-xml-i18n-cotonti/blob/main/LICENSE)
 ---
 
 ## Table of Contents
