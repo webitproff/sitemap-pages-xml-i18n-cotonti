@@ -88,7 +88,7 @@ Go to **Extensions → Plugins → Pages Sitemap (multilingual) → Configuratio
 
 | Parameter | Default Value | Description |
 |---|---|---|
-| **Languages (languages)** | *empty* | A comma-separated list of languages, e.g., `en,ru,ua`. If left empty, all active languages from the Cotonti configuration (`Cot::$cfg['languages']`) are used. |
+| **Languages (languages)** | *empty* | A comma-separated list of languages, e.g., `en,ru,ua`. If left empty, all active languages from the Cotonti configuration (`Cot::$cfg['plugin']['i18n']['locales']`) are used. |
 | **Default language (default_lang)** | `ua` | The language for which no prefix is added to the URL (e.g., `/page.php?id=1` instead of `/ua/page.php?id=1`). |
 | **Use clean URLs (use_pretty_urls)** | `0` (disabled) | If enabled (`1`), map URLs will look like `/sitemap-pages.xml` and `/en/sitemap-pages.xml`. If disabled, direct links with `index.php?r=sitemap_pages` are used. It is recommended to enable after setting up `.htaccess`. |
 | **Include category pagination (pageCategoryPagination)** | `1` (enabled) | If a category has multiple pages of entries, URLs with parameters `?d=2`, `?d=3`, etc. will be added to the map. |
