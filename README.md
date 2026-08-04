@@ -1,10 +1,397 @@
 
+# Sitemap Pages – multilingual sitemap for the Page module (Cotonti)
+
+The **Sitemap Pages** plugin generates individual XML sitemap files for each language specified in the settings and, optionally, a single index file (sitemap index). For languages other than the primary one, only categories and pages that have translations in the standard `i18n` plugin (tables `cot_i18n_structure` and `cot_i18n_pages`) are included in the map.
+
+<img width="1536" height="1024" alt="Sitemap Pages – мультиязычная карта сайта для модуля Page (Cotonti)" src="https://github.com/user-attachments/assets/739353a8-5e50-4c94-8837-18ce5927c297" />
+
+---
+
+## Table of Contents {#toc-en-md}
+
+- [System Requirements and Dependencies](#system-requirements-en-md)
+- [Plugin Structure](#plugin-structure-en-md)
+- [Installation](#installation-en-md)
+- [Admin Settings](#admin-settings-en-md)
+- [`.htaccess` Configuration](#htaccess-setup-en-md)
+- [`robots.txt` Configuration](#robots-setup-en-md)
+- [Browser Check](#browser-check-en-md)
+- [How to Submit to Google Search Console](#google-search-console-en-md)
+- [Caching and Cache Clearing](#caching-en-md)
+- [Troubleshooting](#troubleshooting-en-md)
+- [Additional Notes](#additional-notes-en-md)
+- [Which Is Better: One Huge File or Separate Maps by Module and Language?](#comparison-main-en-md)
+  - [Advantages of Separate Maps](#advantages-en-md)
+  - [Disadvantages of Separate Maps](#disadvantages-en-md)
+  - [What Would Have Happened with One Big File](#old-monolith-en-md)
+  - [Conclusion](#conclusion-en-md)
+- [Notes on Sitemap Pages Plugin Setup and Operation](#note-setup-en-md)
+  - [“Languages” Setting (languages) – Do You Need to Include the Default Language?](#language-setting-en-md)
+  - [How Settings Affect the Index File](#how-settings-affect-index-en-md)
+  - [Why the File at `?r=sitemap_pages&a=index` Is Needed](#index-file-purpose-en-md)
+    - [What the Index Must Contain](#index-must-have-en-md)
+    - [What Must Not Be Present](#index-must-not-have-en-md)
+    - [Example of a Correct Index](#index-example-en-md)
+  - [Adding a Rewrite Rule for the Index File](#rewrite-index-rule-en-md)
+
+---
+
+## System Requirements and Dependencies {#system-requirements-en-md}
+
+- **Cotonti** version 1.0+ (tested with PHP 8.5+ and MySQL 8.4).
+- The **`page` module** – must be installed and active.
+- The **`i18n` plugin** (Content Internationalization) – must be installed and active. The plugin uses its tables (`cot_i18n_structure` and `cot_i18n_pages`) to determine which categories and pages have translations for a specific language.
+- mod_rewrite in Apache (or an equivalent in Nginx) must be configured for clean URLs to work.
+
+---
+
+## Plugin Structure {#plugin-structure-en-md}
+
+The plugin is located in the folder `plugins/sitemap_pages/` and contains the following files:
+
+```
+sitemap_pages/
+├── sitemap_pages.setup.php           # Header, metadata and plugin settings
+├── sitemap_pages.ajax.php            # Main request handler (AJAX)
+├── inc/
+│   └── sitemap_pages.functions.php   # Functions: map generation, URL and language handling
+├── lang/
+│   ├── sitemap_pages.ru.lang.php     # Russian setting labels
+│   └── sitemap_pages.en.lang.php     # English setting labels
+├── tpl/
+│   ├── sitemap_pages.tpl             # Template for a regular urlset
+│   └── sitemap_pages.index.tpl       # Template for the index file (sitemapindex)
+└── setup/
+    └── sitemap_pages.install.php     # Automatically adds a sitemap link to robots.txt on install
+```
+
+The templates already contain the correct XML markup and do not require manual editing.
+
+---
+
+## Installation {#installation-en-md}
+
+1. Download the `sitemap_pages` folder and copy it to the `plugins/` directory of your Cotonti site.
+2. Go to the admin panel: **Extensions → Plugins**.
+3. Find `Pages Sitemap (multilingual)` in the list and click **Install**.
+4. During installation, the plugin automatically adds the line `Sitemap: https://yoursite/sitemap-pages.xml` to `robots.txt` (if the file is writable). Any previous mentions of `sitemap-pages.xml` are removed to avoid duplicates.
+
+After installation, the plugin is ready for configuration.
+
+---
+
+## Admin Settings {#admin-settings-en-md}
+
+Go to **Extensions → Plugins → Pages Sitemap (multilingual) → Configuration**.
+
+| Parameter | Default Value | Description |
+|---|---|---|
+| **Languages (languages)** | *empty* | A comma-separated list of languages, e.g., `en,ru,ua`. If left empty, all active languages from the Cotonti configuration (`Cot::$cfg['languages']`) are used. |
+| **Default language (default_lang)** | `ua` | The language for which no prefix is added to the URL (e.g., `/page.php?id=1` instead of `/ua/page.php?id=1`). |
+| **Use clean URLs (use_pretty_urls)** | `0` (disabled) | If enabled (`1`), map URLs will look like `/sitemap-pages.xml` and `/en/sitemap-pages.xml`. If disabled, direct links with `index.php?r=sitemap_pages` are used. It is recommended to enable after setting up `.htaccess`. |
+| **Include category pagination (pageCategoryPagination)** | `1` (enabled) | If a category has multiple pages of entries, URLs with parameters `?d=2`, `?d=3`, etc. will be added to the map. |
+| **Page change frequency (page_freq)** | `weekly` | The value of the `<changefreq>` tag for pages. |
+| **Page priority (page_prio)** | `0.5` | The value of the `<priority>` tag for pages. |
+| **Max URLs per map part (perpage)** | `50000` | If the total number of URLs exceeds this number, the map will be split into multiple files (usually not necessary). |
+| **Cache time to live (cache_ttl)** | `3600` | The period (in seconds) after which the cached maps are considered stale and will be regenerated on the next request. |
+
+After changing settings, click **Save**.
+
+---
+
+## `.htaccess` Configuration {#htaccess-setup-en-md}
+
+To enable clean URLs (if you have turned on `use_pretty_urls`), add the following lines to the root `.htaccess` **right after** the rule `RewriteRule ^sitemap\.xml$ ...`:
+
+```apache
+RewriteRule ^sitemap-pages\.xml$ index.php?r=sitemap_pages [QSA,L]
+RewriteRule ^(en|ru|pl|ua)/sitemap-pages\.xml$ index.php?r=sitemap_pages&l=$1 [QSA,L]
+```
+
+> **Important:** the `[QSA]` (Query String Append) flag is required, because Cotonti’s language rule may already add a `?l=en` parameter, and without `QSA` it will be lost.
+
+Make sure these rules are placed **before** the line `# All the rest goes through standard rewrite gateway`.
+
+---
+
+## `robots.txt` Configuration {#robots-setup-en-md}
+
+During installation, the plugin automatically adds the following line:
+
+```
+Sitemap: https://yoursite/sitemap-pages.xml
+```
+
+If the automatic addition fails (for example, `robots.txt` is not writable), add this line manually at the end of the file.
+
+If you want to list all language maps directly, you can add:
+
+```
+Sitemap: https://yoursite/sitemap-pages.xml
+Sitemap: https://yoursite/en/sitemap-pages.xml
+Sitemap: https://yoursite/ru/sitemap-pages.xml
+Sitemap: https://yoursite/pl/sitemap-pages.xml
+```
+
+However, it is preferable to use the index file (see below) and specify only that.
+
+---
+
+## Browser Check {#browser-check-en-md}
+
+Right after installation and configuration, you can open the following addresses (the cache will be created automatically on first access):
+
+- **Default language (ua):**  
+  `https://yoursite/sitemap-pages.xml`
+- **English version:**  
+  `https://yoursite/en/sitemap-pages.xml`
+- **Russian version:**  
+  `https://yoursite/ru/sitemap-pages.xml`
+- **Polish version:**  
+  `https://yoursite/pl/sitemap-pages.xml`
+- **Index file (list of all languages):**  
+  `https://yoursite/index.php?r=sitemap_pages&a=index`
+
+Each of these links will show an XML document with page URLs (and categories, if pagination is enabled). If you see an empty `<urlset>`, check whether there are translated pages for that language in the `cot_i18n_pages` table and whether the `i18n` plugin is enabled with correct locales.
+
+---
+
+## How to Submit to Google Search Console {#google-search-console-en-md}
+
+1. Sign in to **Google Search Console** ([https://search.google.com/search-console](https://search.google.com/search-console)).
+2. Select the desired property (website).
+3. In the left menu, go to: **Index → Sitemaps**.
+4. Click **Add a new sitemap**.
+5. Paste the index file URL:  
+   `https://yoursite/index.php?r=sitemap_pages&a=index`
+6. Click **Submit**.
+
+Google will read the index file and automatically add all the language sub-maps listed in it. You can also submit each language map individually, but it is not necessary.
+
+After submission, check the status — it should show “Success” and the number of discovered pages.
+
+---
+
+## Caching and Cache Clearing {#caching-en-md}
+
+The plugin saves generated XML files in the folder `datas/cache/sitemap_pages/`. Inside you will see:
+
+- `ua.xml` – map for the default language.
+- `en.xml`, `ru.xml`, `pl.xml` – maps for other languages.
+- `*.count` – auxiliary files with record counts.
+- `sitemap_pages_index.xml` – the index file (if it was requested).
+
+If you change the plugin settings or modify the code, **delete all files from this folder manually** (via FTP or a file manager). The cache will be regenerated automatically on the next request to any map. In everyday use, clearing is not required – only when changes are made.
+
+---
+
+## Troubleshooting {#troubleshooting-en-md}
+
+- **All language URLs show only `ua.xml`.**  
+  Cause: missing the `[QSA]` flag in the `.htaccess` rules (see section `.htaccess` Configuration). Add `QSA` to both lines.
+- **The URL contains a duplicated language prefix (`/en/en/page.php?id=1`).**  
+  Cause: the `sitemap_pages_url` function does not remove the already added prefix. Make sure that `inc/sitemap_pages.functions.php` uses the correct version of the function (it cleans the path of known prefixes).
+- **Empty file for some languages.**  
+  This means there are no records in the `cot_i18n_pages` (or `cot_i18n_structure`) table with the corresponding locale. Check the translations in the `i18n` plugin.
+- **The map does not update after changing settings.**  
+  Clear the cache manually (delete the contents of `datas/cache/sitemap_pages/`).
+- **Error “XML declaration allowed only at the start of the document” in the browser.**  
+  Make sure that the `sitemap_pages.tpl` and `sitemap_pages.index.tpl` templates do not contain the line `<?xml version="1.0" encoding="UTF-8"?>`, and that the script itself starts with the correct XML declaration (it is added programmatically). Also check that the files do not have a BOM or extra whitespace at the beginning.
+- **Google Search Console does not accept the map.**  
+  Make sure the file conforms to the Sitemap Protocol standard. Use an XML sitemap validator to check, for example:  
+  [https://www.xml-sitemaps.com/validate-xml-sitemap.html](https://www.xml-sitemaps.com/validate-xml-sitemap.html)
+
+---
+
+## Additional Notes {#additional-notes-en-md}
+
+- The `sitemap_pages.index.tpl` template is only used for the page with `?a=index` and generates a `<sitemapindex>`. If you do not plan to use the index, you can leave this template as is.
+- The plugin is completely independent from the old `sitemap` plugin. You can continue using both simultaneously for different modules.
+- When adding a new language, make sure it is present in:
+  - the plugin settings (`languages`);
+  - the `.htaccess` rules (the `(en|ru|pl|ua)` list);
+  - the prefix removal function (`$knownLangs` in `sitemap_pages_url`).
+- All questions, suggestions, and bug reports can be sent to support:  
+  [https://abuyfile.com/forums/cotonti/custom/plugs/](https://abuyfile.com/forums/cotonti/custom/plugs/)
+
+---
+
+## Which Is Better: One Huge File or Separate Maps by Module and Language? {#comparison-main-en-md}
+
+**Direct answer:** separate maps by module and language are **better** for my specific project. One huge file creates more problems than it solves.
+
+Here is a comparison on key points.
+
+### ✅ Advantages of Separate Maps (My Approach) {#advantages-en-md}
+
+1. **Generation performance**  
+   Each map is generated only for its own module (market / page) and language. This is faster, uses less memory, and does not block the site. A huge combined file would have to be completely rebuilt even if only one page changed.
+2. **Flexible caching**  
+   Each module has its own cache TTL (Time To Live – the cache lifetime in seconds). Products might update daily, while pages update weekly. A single file lacks this flexibility – everything would share the same TTL.
+3. **Fault tolerance**  
+   If the product map generation breaks, the page map continues to work. In a monolithic file, one error breaks everything.
+4. **Ease of debugging**  
+   You can immediately see which module/language caused the problem. The logic of each module is isolated.
+5. **Alignment with Cotonti architecture**  
+   Cotonti is modular – plugins like `sitemap_market` and `sitemap_pages` are independent, they can be installed and updated separately. A monolith would break this concept.
+6. **SEO transparency**  
+   Search engines get a clear structure: a separate map for products, a separate one for pages, each in multiple language versions. This simplifies indexing and coverage analysis in Search Console.
+7. **Avoiding limits**  
+   Google accepts files up to 50,000 URLs and 50 MB. By splitting by module and language, you avoid hitting the limit without additional fragmentation.
+
+### ❌ Disadvantages of Separate Maps {#disadvantages-en-md}
+
+1. **More entries in robots.txt**  
+   Instead of a single `Sitemap` line, you either need to list several maps or add an index file (`sitemapindex`) that points to the others. This is not a problem, just a minor complication.
+2. **Slightly more requests from search engines**  
+   Instead of one file, the bot will fetch several. But this is negligible load, and Google handles multiple sitemap files without issues.
+
+### 🤔 What Would Have Happened with One Big File {#old-monolith-en-md}
+
+- Generation would take many times longer, using more memory.
+- Every update to any module would require the entire file to be rebuilt from scratch.
+- It would be harder to stay within the 50,000 URL limit – you would still need to split into parts, losing the point of a monolith.
+- Debugging would become more complex: any error in one module would break the entire map.
+
+In the old monolithic plugin, all modules (market, page, forums, users) were gathered into one XML file (or several parts if the limit was exceeded). In that setup:
+
+- Settings like `market_freq`, `page_freq`, `forums_freq`, `users_freq` only set the `<changefreq>` tag inside the XML – they told the search engine how often the content **supposedly** changes. But **they did not control the actual regeneration** of the map.
+- The actual regeneration frequency was determined by a **single parameter `cache_ttl`** for the whole plugin. As soon as the cache expired (more seconds than specified in `cache_ttl` had passed since the last generation), **data from all modules was collected anew** – even if products update every 5 minutes and pages once a month.
+
+Thus, adding a single new product forced the entire giant file to be rebuilt: market categories and products, pages, forums, users. The more modules were enabled, the longer and more resource-intensive each regeneration became.
+
+In the new approach (separate plugins), each module has its **own `cache_ttl`**, so:
+
+- The product map can regenerate every 30 minutes,
+- The page map – once a day,
+- The forum map – once a week.
+
+When a product is updated, only the product map is rebuilt; the page and forum maps remain in cache and consume no resources. That is the flexibility the monolith lacked.
+
+### Conclusion {#conclusion-en-md}
+
+**Conclusion:** the current approach — separate maps by module and language — is optimal for Cotonti. It scales well, runs faster, and better matches the system’s modular architecture. One huge file only wins in the minimalism of robots.txt, but that advantage is neutralized by using an index file (`sitemapindex`), which you can easily enable.
+
+---
+
+## Notes on Sitemap Pages Plugin Setup and Operation {#note-setup-en-md}
+
+### “Languages” Setting (`languages`) – Do You Need to Include the Default Language? {#language-setting-en-md}
+
+**In short:** now it is **not necessary** to include the default language in the `languages` field. The `sitemap_pages_get_languages()` function **always forcibly adds** the default language (`default_lang`) to the list if it is missing.
+
+**How it works with different input scenarios:**
+
+- **The `languages` field is filled** (e.g., `en,ru,pl`)  
+  The plugin takes the specified languages and adds `default_lang` to them (if not already in the list). As a result, the index will contain all listed languages + the default language. This guarantees that the primary language is never omitted, even if the admin forgets to include it.
+- **The `languages` field is empty**  
+  The plugin retrieves all active locales from the `Cot::$cfg['plugin']['i18n']['locales']` setting (e.g., `ua, en, ru, pl`) and also adds `default_lang` if it happens to be missing. Thus, the index includes all available site languages without the need to list them manually.
+
+**Recommendation:**  
+If you want all languages supported by the i18n plugin to appear in the sitemap, simply leave the `languages` field empty. If you need to limit the set of languages (for example, exclude a language), list the desired codes separated by commas — the default language will be added automatically.
+
+---
+
+### How Settings Affect the Index File (`?r=sitemap_pages&a=index`) {#how-settings-affect-index-en-md}
+
+The index file is built strictly based on the language array returned by the `sitemap_pages_get_languages()` function. Therefore:
+
+- Regardless of the **configuration** (empty or a list), the index **always contains the default language**.
+- If additional languages are listed in the `languages` field, they also appear in the index.
+- If the field is empty, the index includes **all locales** registered in the i18n plugin.
+
+As a result, you get a complete index where each language has a separate `<sitemap>` entry pointing to the corresponding language map (e.g., `/sitemap-pages.xml` for the default language and `/en/sitemap-pages.xml` for English).
+
+---
+
+### Why the File at `?r=sitemap_pages&a=index` Is Needed and What It Should Contain {#index-file-purpose-en-md}
+
+This is a **Sitemap Index file** — a standard element of the Sitemaps protocol designed to combine multiple sitemaps into a single entry point.
+
+**Purpose:**
+
+- Allows you to submit **one URL** to search engines, which automatically reveals all language versions of the maps.
+- Complies with search engine limits (no more than 50,000 URLs or 50 MB per file) — splitting by language removes these limits.
+- Simplifies management: when adding a new language, you don’t need to modify `robots.txt`, just update the plugin settings.
+
+#### What the Index Must Contain {#index-must-have-en-md}
+
+- A root `<sitemapindex>` element with the correct namespace.
+- For each active language — a separate `<sitemap>` block containing:
+  - `<loc>` — the absolute URL of the language map (for the primary language – without a prefix, for others – with a prefix like `/en/`).
+  - `<lastmod>` — the last modification date of that map.
+- All languages for which at least one page or category exists.
+
+#### What Must Not Be Present {#index-must-not-have-en-md}
+
+- `<url>` elements (they are allowed only inside regular sitemaps, not in an index).
+- Missing languages (the primary language must always be present).
+- Duplicate links to the same language map.
+- Broken links to non-existent map files.
+- Languages for which there are no translated pages or translated categories (they can still be present, but then the map will be empty — this is allowed but not optimal; it is better to exclude them if no translation is planned).
+
+#### Example of a Correct Index for Four Languages (`ua`, `en`, `ru`, `pl`) {#index-example-en-md}
+
+```xml
+<sitemapindex xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+  <sitemap>
+    <loc>https://yourproject.com/sitemap-pages.xml</loc>
+    <lastmod>2026-08-04T09:02:52+00:00</lastmod>
+  </sitemap>
+  <sitemap>
+    <loc>https://yourproject.com/en/sitemap-pages.xml</loc>
+    <lastmod>2026-08-04T09:02:52+00:00</lastmod>
+  </sitemap>
+  <sitemap>
+    <loc>https://yourproject.com/ru/sitemap-pages.xml</loc>
+    <lastmod>2026-08-04T09:02:52+00:00</lastmod>
+  </sitemap>
+  <sitemap>
+    <loc>https://yourproject.com/pl/sitemap-pages.xml</loc>
+    <lastmod>2026-08-04T09:02:52+00:00</lastmod>
+  </sitemap>
+</sitemapindex>
+```
+
+This is the file you should submit to Google Search Console — it will ensure the indexing of all language versions of your site.
+
+---
+
+### Adding a Rewrite Rule for the Index File {#rewrite-index-rule-en-md}
+
+If you want to create a rewrite rule for the sitemap index URL `https://yourproject.com/index.php?r=sitemap_pages&a=index` so that it becomes a clean URL:
+
+Add the following rule to the root `.htaccess` **right after the lines**
+
+```apache
+RewriteRule ^sitemap-pages\.xml$ index.php?r=sitemap_pages [QSA,L]
+RewriteRule ^(en|ru|pl|ua)/sitemap-pages\.xml$ index.php?r=sitemap_pages&l=$1 [QSA,L]
+```
+
+and **before the line**
+
+```apache
+# All the rest goes through standard rewrite gateway
+```
+
+this directive:
+
+```apache
+RewriteRule ^sitemap-pages-index\.xml$ index.php?r=sitemap_pages&a=index [QSA,L]
+```
+
+After that, the index file will be available at the clean URL:  
+`https://yourproject.com/sitemap-pages-index.xml`
+
+Do not remove the existing rule for `?r=sitemap_pages&a=index` — it will work in parallel. But for Google Search Console, now use specifically `https://yourproject.com/sitemap-pages-index.xml`.
+
+
 # Sitemap Pages – мультиязычная карта сайта для модуля Page (Cotonti)
 
 Плагин **Sitemap Pages** генерирует отдельные XML‑файлы sitemap для каждого языка, указанного в настройках, и опционально один общий индексный файл (sitemap index). Для языков, отличных от основного, в карту попадают только те категории и страницы, для которых существуют переводы в штатном плагине `i18n` (таблицы `cot_i18n_structure` и `cot_i18n_pages`).
 
 
-<img width="1536" height="1024" alt="Sitemap Pages – мультиязычная карта сайта для модуля Page (Cotonti)" src="https://github.com/user-attachments/assets/739353a8-5e50-4c94-8837-18ce5927c297" />
+
 
 
 ---
