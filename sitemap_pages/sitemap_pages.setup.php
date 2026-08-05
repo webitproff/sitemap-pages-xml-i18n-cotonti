@@ -5,8 +5,8 @@ Code=sitemap_pages
 Name=Pages Sitemap (multilingual)
 Category=seo
 Description=XML sitemap for Pages module with multi-language support (only pages)
-Version=1.0.0
-Date=Aug 3, 2026
+Version=1.1.1
+Date=Aug 5, 2026
 Author=webitproff
 Copyright=Copyright (c) webitproff 2026 | https://github.com/webitproff/sitemap-pages-xml-i18n-cotonti
 Notes=ReadMeMore https://abuyfile.com/ru/page/cotonti/plugs/sitemap-pages-xml-i18n
@@ -44,9 +44,9 @@ defined('COT_CODE') or die('Wrong URL');
  * Support:          https://abuyfile.com/forums/cotonti/custom/plugs/
  * Source:           https://github.com/webitproff/sitemap-pages-xml-i18n-cotonti
  * 
- * Date: Aug 3, 2026
+ * Date: Aug 5, 2026
  * @package sitemap_pages
- * @version 1.0.0
+ * @version 1.1.1
  * @author webitproff
  * @copyright Copyright (c) webitproff 2026 | https://github.com/webitproff/sitemap-pages-xml-i18n-cotonti
  * @license BSD
