@@ -10,7 +10,7 @@
  * Также при необходимости добавляет правила rewrite в корневой .htaccess.
  *
  * Filename:    plugins/sitemap_pages/setup/sitemap_pages.install.php
- * Plugin URI:  https://abuyfile.com/ru/page/cotonti/plugs/sitemap-pages-xml-i18n
+ * Plugin URI:  https://abuyfile.com/ru/market/cotonti/plugs/sitemap-pages-xml-i18n
  * Support:     https://abuyfile.com/forums/cotonti/custom/plugs/
  * Source:      https://github.com/webitproff/sitemap-pages-xml-i18n-cotonti
  *
