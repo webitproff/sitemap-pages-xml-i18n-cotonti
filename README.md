@@ -392,6 +392,12 @@ Do not remove the existing rule for `?r=sitemap_pages&a=index` — it will work 
 
 
 
+### Related extentions:
+- [**sitemap_forums** – XML sitemap for forums](https://github.com/webitproff/sitemap-forums-xml-cotonti/)
+- [**sitemap_pages** – XML sitemap for pages (with multilingual support)](https://github.com/webitproff/sitemap-pages-xml-i18n-cotonti)
+- [**sitemap_users** – XML sitemap for user profiles](https://github.com/webitproff/sitemap-users-xml-cotonti)
+- [**sitemap_market** – XML sitemap for products (Market module)](https://github.com/webitproff/sitemap-market-xml-i18n-cotonti)
+
 ---
 
 ## Оглавление
@@ -786,3 +792,11 @@ RewriteRule ^sitemap-pages-index\.xml$ index.php?r=sitemap_pages&a=index [QSA,L]
 ---
 
 Теперь мультиязычные карты страниц вашего сайта будут автоматически обновляться и индексироваться поисковыми системами.
+
+
+### Связанные плагины:
+- [**sitemap_forums** – XML sitemap for forums](https://github.com/webitproff/sitemap-forums-xml-cotonti/)
+- [**sitemap_pages** – XML sitemap for pages (with multilingual support)](https://github.com/webitproff/sitemap-pages-xml-i18n-cotonti)
+- [**sitemap_users** – XML sitemap for user profiles](https://github.com/webitproff/sitemap-users-xml-cotonti)
+- [**sitemap_market** – XML sitemap for products (Market module)](https://github.com/webitproff/sitemap-market-xml-i18n-cotonti)
+
