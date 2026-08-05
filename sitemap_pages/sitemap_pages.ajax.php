@@ -23,13 +23,13 @@ Hooks=ajax
  * `inc/sitemap_pages.functions.php`.
  *
  * Filename:    plugins/sitemap_pages/sitemap_pages.ajax.php
- * Plugin URI:  https://abuyfile.com/ru/page/cotonti/plugs/sitemap-pages-xml-i18n
+ * Plugin URI:  https://abuyfile.com/ru/market/cotonti/plugs/sitemap-pages-xml-i18n
  * Support:     https://abuyfile.com/forums/cotonti/custom/plugs/
  * Source:      https://github.com/webitproff/sitemap-pages-xml-i18n-cotonti
  *
- * Date:       Aug 3, 2026
+ * Date:       Aug 5, 2026
  * @package    sitemap_pages
- * @version    1.0.0
+ * @version    1.1.1
  * @author     webitproff
  * @copyright  Copyright (c) webitproff 2026 | https://github.com/webitproff/sitemap-pages-xml-i18n-cotonti
  * @license    BSD
