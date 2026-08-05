@@ -13,16 +13,16 @@
  * Filename:    plugins/sitemap_pages/inc/sitemap_pages.functions.php
  * sitemap_pages plugin for Cotonti v1.+, PHP 8.5+, MySQL 8.4
  *
- * ReadMeMore:       https://abuyfile.com/ru/page/cotonti/plugs/sitemap-pages-xml-i18n
- * Support:          https://abuyfile.com/forums/cotonti/custom/plugs/
- * Source:           https://github.com/webitproff/sitemap-pages-xml-i18n-cotonti
- * 
- * Date: Aug 3, 2026
- * @package sitemap_pages
- * @version 1.0.0
- * @author webitproff
- * @copyright Copyright (c) webitproff 2026 | https://github.com/webitproff/sitemap-pages-xml-i18n-cotonti
- * @license BSD
+ * Plugin URI:  https://abuyfile.com/ru/market/cotonti/plugs/sitemap-pages-xml-i18n
+ * Support:     https://abuyfile.com/forums/cotonti/custom/plugs/
+ * Source:      https://github.com/webitproff/sitemap-pages-xml-i18n-cotonti
+ *
+ * Date:       Aug 5, 2026
+ * @package    sitemap_pages
+ * @version    1.1.1
+ * @author     webitproff
+ * @copyright  Copyright (c) webitproff 2026 | https://github.com/webitproff/sitemap-pages-xml-i18n-cotonti
+ * @license    BSD
  */
 
 defined('COT_CODE') or die('Wrong URL');
@@ -153,44 +153,57 @@ function sitemap_pages_parse(&$t, &$items, $item, $perpage, $lang)
  *
  * Источники (в порядке приоритета):
  *   1. Настройка плагина `languages` (строка через запятую).
- *   2. Массив 
- *   3. 
+ *   2. Активные локали из плагина `i18n` (параметр `locales`), если плагин активен.
+ *   3. Если ничего не найдено — только язык по умолчанию.
+ *
+ * Язык по умолчанию всегда добавляется первым, даже если он отсутствует в списке.
  *
  * @return array Список языков, например ['en','ru','pl','ua']
  */
-
 function sitemap_pages_get_languages()
 {
     $cfg = Cot::$cfg['plugin']['sitemap_pages'];
-    $defaultLang = $cfg['default_lang'] ?? 'ru';
+    // Язык по умолчанию: сначала из настроек плагина, затем глобальный язык Cotonti, и только потом 'ru'
+    $defaultLang = $cfg['default_lang'] ?? Cot::$cfg['defaultlang'] ?? 'ru';
 
     // 1. Языки явно указаны в настройках плагина sitemap_pages
     if (!empty($cfg['languages'])) {
         $langs = array_map('trim', explode(',', $cfg['languages']));
         $langs = array_filter($langs);
+        // Гарантируем, что язык по умолчанию присутствует и идёт первым
         if (!in_array($defaultLang, $langs)) {
+            array_unshift($langs, $defaultLang);
+        } else {
+            $langs = array_diff($langs, [$defaultLang]);
             array_unshift($langs, $defaultLang);
         }
         return array_values($langs);
     }
 
-    // 2. Языки не указаны — берём все локали из плагина i18n
-    $i18nLocales = Cot::$cfg['plugin']['i18n']['locales'] ?? '';
-    if (!empty($i18nLocales)) {
-        $langs = [];
-        $lines = preg_split('/\r?\n/', $i18nLocales);
-        foreach ($lines as $line) {
-            $parts = explode('|', $line);
-            $code = trim($parts[0] ?? '');
-            if ($code !== '') {
-                $langs[$code] = true;
+    // 2. Языки не указаны — берём все локали из плагина i18n,
+    //    но только если этот плагин активен (защита от ошибки, если плагин не установлен)
+    if (cot_plugin_active('i18n')) {
+        $i18nLocales = Cot::$cfg['plugin']['i18n']['locales'] ?? '';
+        if (!empty($i18nLocales)) {
+            $langs = [];
+            $lines = preg_split('/\r?\n/', $i18nLocales);
+            foreach ($lines as $line) {
+                $parts = explode('|', $line);
+                $code = trim($parts[0] ?? '');
+                if ($code !== '') {
+                    $langs[$code] = true;
+                }
             }
+            $langs = array_keys($langs);
+            // Язык по умолчанию — первым
+            if (!in_array($defaultLang, $langs)) {
+                array_unshift($langs, $defaultLang);
+            } else {
+                $langs = array_diff($langs, [$defaultLang]);
+                array_unshift($langs, $defaultLang);
+            }
+            return $langs;
         }
-        $langs = array_keys($langs);
-        if (!in_array($defaultLang, $langs)) {
-            array_unshift($langs, $defaultLang);
-        }
-        return $langs;
     }
 
     // 3. Если ничего не найдено — только язык по умолчанию
@@ -206,16 +219,23 @@ function sitemap_pages_get_languages()
  * (это возможно из‑за работы Cotonti) – если да, дублирование предотвращается.
  *
  * @param  string       $lang   Код языка
- * @param  string       $name   Тип URL (обычно 'page')
+ * @param  string       $name   Тип URL ('page')
  * @param  string|array $params Параметры для cot_url()
- * @return string               Абсолютный URL, например:
- *                              https://yourdomain.com/page.php?id=1
- *                              https://yourdomain.com/en/page.php?id=1
+ * @return string               Будем строить Абсолютный URL, например:
+ *        https://yourdomain.com/index.php?e=page&c=news&id=1 вместо /index.php?e=page&c=news&id=1
+ *        https://yourdomain.com/en/news/my-page (с ЧПУ) вместо /en/news/my-page 
+ *   
+ *    
+ * просто для понимания в догонку мы добавляем COT_ABSOLUTE_URL: Относительный URL, пример:
+ *    $urlparams = empty($pag['page_alias']) ? array('c' => $pag['page_cat'], 'id' => $id) :
+ *        array('c' => $pag['page_cat'], 'al' => $al);
+ *    cot_url('page', $urlparams, '', false, true),
  */
 function sitemap_pages_url($lang, $name, $params)
 {
     $cfg              = Cot::$cfg['plugin']['sitemap_pages'];
-    $defaultLang      = $cfg['default_lang'] ?? 'ru';
+    // Язык по умолчанию с учётом глобальной настройки Cotonti
+    $defaultLang      = $cfg['default_lang'] ?? Cot::$cfg['defaultlang'] ?? 'ru';
     $addDefaultPrefix = !empty($cfg['add_default_prefix']); // 1 = добавляем префикс, 0 = не добавляем
 
     $relative = ltrim(cot_url($name, $params), '/');
@@ -256,7 +276,8 @@ function sitemap_pages_url($lang, $name, $params)
 function sitemap_pages_index_url($lang)
 {
     $cfg         = Cot::$cfg['plugin']['sitemap_pages'];
-    $defaultLang = $cfg['default_lang'] ?? 'ua'; // смотри строку выше это никак не связано с $cfg['defaultlang'] из datas/config.php
+    // Язык по умолчанию: сначала из настроек плагина, затем глобальный Cotonti, и только потом 'ru'
+    $defaultLang = $cfg['default_lang'] ?? Cot::$cfg['defaultlang'] ?? 'ru';
     $usePretty   = !empty($cfg['use_pretty_urls']);
 
     if ($usePretty) {
@@ -268,8 +289,7 @@ function sitemap_pages_index_url($lang)
         $query = ($lang === $defaultLang)
             ? 'r=sitemap_pages'
             : "r=sitemap_pages&l=$lang";
-        //return COT_ABSOLUTE_URL . 'index.php?' . $query;
-		return COT_ABSOLUTE_URL . 'index.php?' . str_replace('&', '&amp;', $query);
+        return COT_ABSOLUTE_URL . 'index.php?' . str_replace('&', '&amp;', $query);
     }
 }
 
@@ -282,7 +302,7 @@ function sitemap_pages_index_url($lang)
  *
  * Алгоритм:
  *  1. Если язык не является основным, загружаются списки переведённых категорий
- *     и страниц из таблиц i18n.
+ *     и страниц из таблиц i18n (только если плагин i18n активен).
  *  2. Для каждой категории, доступной пользователю (и, если требуется, имеющей перевод),
  *     добавляются URL самой категории и страницы пагинации (если включены в настройках).
  *  3. Добавляются все активные страницы. Для неосновного языка – только те, у которых
@@ -297,7 +317,7 @@ function sitemap_pages_index_url($lang)
  */
 function sitemap_pages_generate_language($lang, $perpage, $cfgPlug, $defaultLang)
 {
-    global $cacheDir, $db_x;   // определена в sitemap_pages.ajax.php
+    global $cacheDir, $db_x;   // $cacheDir определена в sitemap_pages.ajax.php, $db_x — в Cotonti
 
     $t     = new XTemplate(cot_tplfile('sitemap_pages', 'plug'));
     $items = 0;
@@ -306,12 +326,12 @@ function sitemap_pages_generate_language($lang, $perpage, $cfgPlug, $defaultLang
     $translatedCats  = null;   // [code => true] – категории, имеющие перевод
     $translatedItems = null;   // [id   => true] – страницы, имеющие перевод
 
-
-
+    // Загружаем переводы, только если плагин i18n активен и язык не основной
     if ($lang !== $defaultLang && cot_plugin_active('i18n')) {
         $i18n_structure = $db_x . 'i18n_structure';
         $i18n_pages     = $db_x . 'i18n_pages';
 
+        // Дополнительная проверка существования таблиц i18n (на случай неполной установки)
         $tableExists = Cot::$db->query("SHOW TABLES LIKE '$i18n_structure'")->rowCount() > 0;
 
         if ($tableExists) {
